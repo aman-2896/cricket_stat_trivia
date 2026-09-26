@@ -123,8 +123,9 @@ Six tables, populated by `db/loader.py` from Cricsheet JSON:
 
 - **MCP server**:
   ```bash
-  python mcp/mcp_server.py
+  fastmcp run mcp/mcp_server.py
   ```
+  > **Note:** run it with `fastmcp run`, not `python mcp/mcp_server.py` or `python -m mcp.mcp_server` — this project's own package is named `mcp/`, which shadows the real third-party `mcp` SDK package that `fastmcp` depends on internally when the project root is put on `sys.path` (as `mcp/mcp_server.py` does), causing `ModuleNotFoundError: No module named 'mcp.server'`. `fastmcp run` avoids this because it doesn't import the target file the same way.
 
 - **Agent directly** (for local testing):
   ```bash
@@ -138,12 +139,14 @@ Six tables, populated by `db/loader.py` from Cricsheet JSON:
 
 ## Environment variables
 
-See `.env.example`:
+See `.env.example` (note: it doesn't yet include the LangSmith variables listed below — add them yourself if you want tracing).
 
 | Variable            | Purpose                                             |
 |---------------------|------------------------------------------------------|
 | `DB_HOST`/`DB_PORT`/`DB_NAME` | Postgres connection details                  |
 | `DB_USER`/`DB_PASSWORD`       | Full-access DB credentials                   |
-| `DB_READONLY_USER`            | Read-only DB role used to run generated SQL  |
-| `ANTHROPIC_API_KEY`           | Used by MCP/Claude-based tooling             |
-| `OPENAI_API_KEY`              | Used for LLM calls (SQL generation, agent, embeddings, eval judge) |
+| `DB_READONLY_USER`            | Read-only DB role used to run generated SQL. **Note:** it currently authenticates with `DB_PASSWORD` (the same password as `DB_USER`, see [config/config.py](config/config.py#L29-L34)) rather than a password of its own — the isolation comes entirely from the Postgres role's own `SELECT`-only grants, not from a separate credential. |
+| `OPENAI_API_KEY`              | Used for every LLM call in this project (SQL generation, the agent, embeddings, image descriptions, and the eval judge) |
+| `LANGSMITH_TRACING`/`LANGSMITH_ENDPOINT`/`LANGSMITH_API_KEY`/`LANGSMITH_PROJECT` | Optional. Not referenced directly in code — LangChain auto-enables tracing to LangSmith when these are set in the environment, since `langsmith` is a project dependency. |
+
+`ANTHROPIC_API_KEY` was removed from this list: nothing in the codebase reads it, and `anthropic` isn't a project dependency — if you have it set locally it's currently unused.
