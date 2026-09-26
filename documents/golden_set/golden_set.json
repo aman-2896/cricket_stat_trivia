@@ -1,0 +1,91 @@
+{
+  "_meta": {
+    "description": "Golden evaluation set for the crickey_stat_trivia text2SQL stats path.",
+    "ground_truth_scope": "Answers are the CORRECT answers ACCORDING TO THE DATABASE (44 ingested matches of the ICC Men's T20 World Cup 2024). Cricsheet was missing ~11 of the 55 scheduled matches, so these answers reflect the ingested data, NOT necessarily real-world tournament totals. The judge MUST evaluate against these expected answers only, and MUST NOT apply outside cricket knowledge.",
+    "verified_by": "Aman (domain expert), by writing and running correct SQL and sanity-checking against cricket knowledge.",
+    "difficulty_levels": ["easy", "medium", "hard"],
+    "answer_shapes": "Answers vary in shape (scalar / name+number / full row / list of names) on purpose, to stress the comparison harness."
+  },
+  "cases": [
+    {
+      "id": "q1",
+      "difficulty": "easy",
+      "question": "How many sixes did Kohli hit in the tournament?",
+      "expected_answer": "6",
+      "tests": ["basic aggregation", "hint1 batter_runs", "hint3 super-over filter", "hint5 name ILIKE"],
+      "notes": ""
+    },
+    {
+      "id": "q2",
+      "difficulty": "easy",
+      "question": "Who won the final?",
+      "expected_answer": "India",
+      "tests": ["match lookup"],
+      "notes": "KNOWN DATA LIMITATION: the DB has no match-stage/'final' indicator, so the system likely CANNOT identify which match was the final. Expected failure category = data gap, not LLM reasoning error."
+    },
+    {
+      "id": "q3",
+      "difficulty": "easy",
+      "question": "What was the highest team total in a tournament match?",
+      "expected_answer": "India, 205",
+      "tests": ["team total = SUM(total_runs)", "hint1 team case", "hint3 super-over filter"],
+      "notes": ""
+    },
+    {
+      "id": "q4",
+      "difficulty": "easy",
+      "question": "How many wickets fell in the final?",
+      "expected_answer": "15",
+      "tests": ["wicket count in a specific match"],
+      "notes": "KNOWN DATA LIMITATION: same 'no final indicator' gap as q2 — system likely cannot identify the final match. Expected failure category = data gap."
+    },
+    {
+      "id": "q5",
+      "difficulty": "medium",
+      "question": "Which bowler took the most wickets in the tournament?",
+      "expected_answer": "Arshdeep Singh, 14",
+      "tests": ["hint4 run-out exclusion", "hint3 super-over filter", "GROUP BY bowler"],
+      "notes": ""
+    },
+    {
+      "id": "q6",
+      "difficulty": "medium",
+      "question": "Who scored the most runs in the tournament?",
+      "expected_answer": "TM Head, 255",
+      "tests": ["hint1 batter_runs", "GROUP BY batter (NOT player — the LLM previously crashed here using a non-existent 'player' column)"],
+      "notes": "Previously CRASHED in ad-hoc testing (GROUP BY player). Watch whether the LLM now uses batter."
+    },
+    {
+      "id": "q7",
+      "difficulty": "medium",
+      "question": "Which bowler had the best economy rate in the tournament? Use a minimum of 60 legal deliveries (10 overs) bowled to qualify.",
+      "expected_answer": "LH Ferguson, 3.17",
+      "tests": ["hint2 legal deliveries", "economy = runs conceded per over", "HAVING min-deliveries threshold"],
+      "notes": "Threshold deliberately set to 60 legal deliveries so the comparison is meaningful (not a tiny sample)."
+    },
+    {
+      "id": "q8",
+      "difficulty": "hard",
+      "question": "Did Kohli score a fifty in any match? If so, which matches? How many runs?",
+      "expected_answer": "Yes, 1 fifty: match 19 on 2024-06-29, Kohli scored 76.",
+      "tests": ["per-match aggregation GROUP BY match HAVING SUM(batter_runs) >= 50"],
+      "notes": "Previously SILENTLY WRONG (LLM used batter_runs >= 50, a single-ball check, returning empty = false 'no fifties'). The dangerous silent-failure case."
+    },
+    {
+      "id": "q9",
+      "difficulty": "hard",
+      "question": "What was the highest individual score by a batter in a single match, and who scored it?",
+      "expected_answer": "Aaron Jones, 94 (off 39 balls), 2024-06-01, Canada vs United States of America.",
+      "tests": ["per-innings batting total then MAX across all"],
+      "notes": ""
+    },
+    {
+      "id": "q10",
+      "difficulty": "hard",
+      "question": "Did any bowler take a hat-trick in the tournament? If so, who took it and in which match?",
+      "expected_answer": "Yes: CJ Jordan took hat-trick.",
+      "tests": ["hat-trick = 3 consecutive deliveries BY THE SAME BOWLER (can span two overs)"],
+      "notes": "BRUTAL case. Hat-trick spanning two overs (Cummins: last 2 balls of one over + first ball of his next over) cannot be found by naive 'consecutive rows in an over' logic — needs window functions partitioned by bowler over their own delivery sequence. Even the domain expert could only fully query Jordan's single-over hat-trick; Cummins is known from cricket knowledge. Expected to be very hard / fail for text2SQL."
+    }
+  ]
+}

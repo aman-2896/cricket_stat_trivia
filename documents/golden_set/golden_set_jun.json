@@ -1,0 +1,43 @@
+{
+  "_meta": {
+    "description": "Golden evaluation set for the crickey_stat_trivia text2SQL stats path.",
+    "ground_truth_scope": "Answers are the CORRECT answers ACCORDING TO THE DATABASE (44 ingested matches of the ICC Men's T20 World Cup 2024). Cricsheet was missing ~11 of the 55 scheduled matches, so these answers reflect the ingested data, NOT necessarily real-world tournament totals. The judge MUST evaluate against these expected answers only, and MUST NOT apply outside cricket knowledge.",
+    "verified_by": "Aman (domain expert), by writing and running correct SQL and sanity-checking against cricket knowledge.",
+    "difficulty_levels": ["easy", "medium", "hard"],
+    "answer_shapes": "Answers vary in shape (scalar / name+number / full row / list of names) on purpose, to stress the comparison harness."
+  },
+  "cases": [
+    {
+      "id": "q1",
+      "difficulty": "easy",
+      "question": "How many sixes did Kohli hit in the tournament?",
+      "expected_answer": "6",
+      "tests": ["basic aggregation", "hint1 batter_runs", "hint3 super-over filter", "hint5 name ILIKE"],
+      "notes": ""
+    },
+    {
+      "id": "q2",
+      "difficulty": "easy",
+      "question": "Who won the final?",
+      "expected_answer": "India",
+      "tests": ["match lookup"],
+      "notes": "KNOWN DATA LIMITATION: the DB has no match-stage/'final' indicator, so the system likely CANNOT identify which match was the final. Expected failure category = data gap, not LLM reasoning error."
+    },
+    {
+      "id": "q3",
+      "difficulty": "easy",
+      "question": "What was the highest team total in the tournament?",
+      "expected_answer": "India, 205",
+      "tests": ["team total = SUM(total_runs)", "hint1 team case", "hint3 super-over filter"],
+      "notes": ""
+    },
+    {
+      "id": "q4",
+      "difficulty": "easy",
+      "question": "How many wickets fell in the final?",
+      "expected_answer": "15",
+      "tests": ["wicket count in a specific match"],
+      "notes": "KNOWN DATA LIMITATION: same 'no final indicator' gap as q2 — system likely cannot identify the final match. Expected failure category = data gap."
+    }
+  ]
+}
